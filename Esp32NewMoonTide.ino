@@ -33,6 +33,7 @@ float tidalDifference=0;
  bool bing = 1;
  bool futureLowGate = 0;
  bool futureHighGate = 0;
+ const int enablePin = 32;
 const int MOTOR_STEP_PIN = 33;
 const int MOTOR_DIRECTION_PIN = 25;
 const int LIMIT_SWITCH_PIN = 17; 
@@ -131,21 +132,20 @@ void graphTide(DateTime now, DateTime futureHigh, DateTime futureLow,int dS){
     
 }
 
-void tftScreen(DateTime now, DateTime futureHigh, DateTime futureLow,int dS){
+void SerialScreen(DateTime now, DateTime futureHigh, DateTime futureLow,int dS){
    bool hiLow;
+   tft.fillScreen(TFT_BLACK);
+   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+   tft.setTextFont(4);
+   tft.setCursor(0, 0);
    if( int(futureHigh.unixtime() - futureLow.unixtime()) < 0) hiLow = 1;
    if( int(futureHigh.unixtime() - futureLow.unixtime()) > 0) hiLow = 0;
-  tft.setCursor(0,0,2);
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);  tft.setTextSize(2);
-  //tft.clear();
-  //tft.home();
- // tft.set2X();
  
   if (hiLow) {
-    tft.print("HI     ");
+    tft.print("HI         ");
     tft.println("LOW");
-    tft.print(futureHigh.hour() +2, DEC); 
-    tft.print(":");
+    tft.print(futureHigh.hour() +1, DEC); 
+  tft.print(":");
   if (futureHigh.minute() < 10) {
     tft.print("0");
     tft.print(futureHigh.minute());
@@ -153,32 +153,32 @@ void tftScreen(DateTime now, DateTime futureHigh, DateTime futureLow,int dS){
   else if (futureHigh.minute() >= 10) {
     tft.print(futureHigh.minute());
   }
-  tft.print(" ");
-    tft.print(futureLow.hour() + 2, DEC); 
+  tft.print("       ");
+  tft.print(futureLow.hour() +1, DEC); 
   tft.print(":");
   if (futureLow.minute() < 10) {
     tft.print("0");
     tft.print(futureLow.minute());
    }
   else if (futureLow.minute() >= 10) {
-    tft.print(futureLow.minute());
+   tft.print(futureLow.minute());
   }
     
   }
   else {
-    tft.print("LOW     ");
+    tft.print("LOW         ");
     tft.println("HI");
-    tft.print(futureLow.hour() + 2, DEC); 
+    tft.print(futureLow.hour() +1, DEC); 
   tft.print(":");
   if (futureLow.minute() < 10) {
-    tft.print("0");
-    tft.print(futureLow.minute());
+   tft.print("0");
+   tft.print(futureLow.minute());
    }
   else if (futureLow.minute() >= 10) {
     tft.print(futureLow.minute());
   }
-  tft.print(" ");
-   tft.print(futureHigh.hour() +2, DEC); 
+  Serial.print("       ");
+   tft.print(futureHigh.hour() +1, DEC); 
    tft.print(":");
   if (futureHigh.minute() < 10) {
     tft.print("0");
@@ -189,39 +189,30 @@ void tftScreen(DateTime now, DateTime futureHigh, DateTime futureLow,int dS){
   }
   }
   tft.println();
-  
-  
+  tft.println();
+  tft.println();
+  tft.println();
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+  tft.drawCentreString("Whittier Dock Tide", 125, 55, 4);
  
-results = myTideCalc.currentTide(now);
-      //tft.fillScreen(TFT_BLACK ); 
-      //tft.setCursor(0,0,2);
-      //tft.print("this:    ");
-     // tft.println(results, 3);
-
-      //tft.home();
-      //tft.set2X();  // Enable large font    
-      //tft.println(); // Print site name, move to next line
-     // tft.print("  ");
-      //tft.println("SITKA"); // print tide ht. to 3 decimal places
-      //tft.println(" ft");
-      //tft.set1X(); // Enable normal font
-     //tft.println("  Tide Location");
-  tft.print(now.year(), DEC);
-  tft.print("/");
-  tft.print(now.month(), DEC); 
-  tft.print("/");
-  tft.print(now.day(), DEC); 
-  tft.print("  ");
-  tft.print(now.hour() + (2 * dS), DEC); 
-  tft.print(":");
+results = myTideCalc.currentTide(now); 
+      
+  Serial.print(now.year(), DEC);
+  Serial.print("/");
+  Serial.print(now.month(), DEC); 
+  Serial.print("/");
+  Serial.print(now.day(), DEC); 
+  Serial.print("  ");
+  Serial.print(now.hour() + 1, DEC); 
+  Serial.print(":");
   if (now.minute() < 10) {
-    tft.print("0");
-    tft.print(now.minute());
+    Serial.print("0");
+    Serial.println(now.minute());
    }
   else if (now.minute() >= 10) {
-    tft.print(now.minute());
+    Serial.println(now.minute());
   }
- tft.print(" ");
+ Serial.print(" ");
 
 }
 
@@ -231,7 +222,9 @@ void setup() {
   Serial.begin(57600);
   //Serial.begin(115200);
   pinMode(LIMIT_SWITCH_PIN, INPUT_PULLUP);
-  //RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  pinMode(enablePin, OUTPUT);
+  digitalWrite(enablePin, LOW);
+  RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
   
   //RTC.adjust(DateTime(2021, 8, 26, 13, 8, 0)); 
   tft.init();
@@ -267,32 +260,84 @@ void findEndPoint(){
 void loop() {
   // The main statement block will run once per second
  EVERY_N_MINUTES(15){
-      
+      digitalWrite(enablePin, LOW);
       now = RTC.now(); // update time
       
        if((now.month()>3&&now.month()<11)||(now.month()==3&&now.day()>11)||(now.month()==11&&now.day()<6))dS=1;
    now = (now.unixtime() - dS*3600);
    
    float resultsStepper = myTideCalc.currentTide(now);
+   Serial.print("resultStepper=");
+   Serial.println(resultsStepper);
    resultsStepper = resultsStepper  + 3;
-   resultsStepper = constrain( resultsStepper, 0, 19);
+   resultsStepper = constrain( resultsStepper, 0, 16);
    resultsStepper = resultsStepper * 10;
-   int moveStepper = map(resultsStepper,0,190,0,6000);
+   int moveStepper = map(resultsStepper,0,160,0,6000);
   stepper.setSpeedInStepsPerSecond(250);
   stepper.setAccelerationInStepsPerSecondPerSecond(800);
   stepper.moveToPositionInSteps(0);
   //delay(5000);
+  
   Serial.print("moveStepper");
   Serial.println(moveStepper);
+  /*
   tft.fillScreen(TFT_BLACK);
    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
    tft.setTextFont(4);
    tft.setCursor(0, 0);
    tft.println(moveStepper);
+   */
   //moveStepper *= -1;
   stepper.moveToPositionInSteps(moveStepper);
+  digitalWrite(enablePin, HIGH);
   delay(5000);
- 
+  bing = 1;
+   i = 0;
+    pastResult=myTideCalc.currentTide(now);
+  while(bing){ //This loop asks when the next high or low tide is by checking 15 min intervals from current time
+    i++;
+   
+    DateTime future(now.unixtime() + (i*5*60L));
+    results=myTideCalc.currentTide(future);
+    tidalDifference=results-pastResult;
+    if (gate){
+      if(tidalDifference<0)slope=0;//if slope is positive--rising tide--slope neg falling tide
+      else slope=1;
+      gate=0;
+   }
+   if(tidalDifference>0&&slope==0){
+      futureLow = future;
+      gate=1;
+      //bing = 0;
+      futureLowGate = 1;
+   }
+    else if(tidalDifference<0&&slope==1){
+    futureHigh = future;
+    gate=1;
+    //bing = 0;
+    futureHighGate = 1;
+  
+   }
+   if( futureHighGate && futureLowGate) {
+  
+    SerialScreen(now, futureHigh, futureLow,dS);
+    delay(4000);
+    //graphTide( now, futureHigh, futureLow, dS);
+    
+    delay(4000);
+    gate = 1;
+    bing = 0;
+    futureHighGate = 0;
+    futureLowGate = 0;
+   }
+    pastResult=results;
+    //Serial.print("results");
+    //Serial.print(results);
+    //Serial.print(future.year());
+    
+  }
+  
+  
    
   
   }
